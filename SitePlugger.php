@@ -240,7 +240,7 @@ class SitePlugger {
            //$image_links = $this->extract_img($page_content);
 
             echo "\n found pages=";var_dump(count($page_links));
-            echo "\n found images=";var_dump(count($image_links));
+
             foreach ($page_links as $j => $page_link){
 
                 if(!in_array($page_link, $this->all_urls) &&
@@ -254,6 +254,9 @@ class SitePlugger {
                 }
             }
             echo "\n unique=";var_dump(count($this->all_urls));
+            if(count($this->all_urls) == 0){
+                echo "\n Scanning Complete !!";
+            }
         }else {
             echo "\n Error 1-> {$status_code}";
         }
