@@ -29,7 +29,7 @@ class SitePlugger {
     public $save_directory = "";
     public $save_bucket_s3 = "";
     public $s3_prefix = "";
-    
+
     public $file_to_save = null;
 
     //Array containing all scanned URL's
@@ -54,7 +54,7 @@ class SitePlugger {
         error_reporting(E_ALL);
         ini_set('display_errors', 1);
 
-        
+
     }
 
     public function __destruct() {
@@ -80,10 +80,11 @@ class SitePlugger {
 
     public function make_simple_get($url){
         try {
-
+          if(trim($url) != ""){
             $this->response = $this->client->request('GET', $url);
-
-
+          } else {
+            echo "\n Blank URL !!!";
+          }
         } catch (ClientException $ex) {
             var_dump($ex->getMessage());
         } catch (ConnectException $ex) {
@@ -119,6 +120,31 @@ class SitePlugger {
         else{
             return false;
         }
+    }
+
+    private function check_exist($page_url){
+      $parsed_url = parse_url($page_url);
+
+      if(isset($parsed_url['path'])) {
+        $url_path = trim($parsed_url['path'],"/");
+        $url_path = explode("/", $url_path);
+
+        if(count($url_path) > 1){
+            $file_name = array_pop($url_path);
+
+            $rest_folder_path = implode("/", $url_path);
+            $rest_folder_path = $this->save_directory . "/". $rest_folder_path;
+
+            $_local_path_file = $rest_folder_path . "/". $file_name. $this->save_ext;
+
+            if(file_exists($_local_path_file) == true){
+              return true;
+            }
+            return false;
+        }
+      }else {
+        return false; //skip home page
+      }
     }
 
     private function extract_img($content){
@@ -270,14 +296,22 @@ class SitePlugger {
 
         if(count($log_lines) > 0){
             foreach ($log_lines as $line){
-              $this->make_simple_get($line);
+              if($this->check_exist($line) == false){
+                echo "\n File not exists: {$line}";
+
+                $this->make_simple_get($line);
                 $content =  $this->get_body();
 
                 if($this->replace_domain_in_file == true){
-                    $content = $this->replace_domain($content);
+                  $content = $this->replace_domain($content);
                 }
 
                 $this->save_file_and_path($line, $content);
+
+              } else {
+                echo "\n File exists: {$line}";
+              }
+
             }
         }else {
             echo "\n Log file empty!!";
@@ -292,18 +326,20 @@ class SitePlugger {
 
         try {
             $provider = CredentialProvider::defaultProvider();
-        
+
             $s3Client = new S3Client([
                 'region' => 'us-west-2',
                 'version' => '2006-03-01',
                 'credentials' => $provider
             ]);
-            
             $buckets = $s3Client->listBuckets();
+
+            var_dump($buckets);
+            exit;
 
             if(!in_array($this->save_bucket_s3, $buckets['Buckets'])){
                 echo "\n Bucket not exits --{$this->save_bucket_s3} !!";
-                
+
                 if(isset($create_bucket)){
                     //Creating S3 Bucket
                     echo "\n creating Bucket -- {$this->save_bucket_s3}";
@@ -314,23 +350,18 @@ class SitePlugger {
                     exit;
                 }
             }
-            
-            $s3_prefix = "testing";
+
             $s3Client->uploadDirectory(
-                    $this->save_directory, 
+                    $this->save_directory,
                     $this->save_bucket_s3,
                     $this->s3_prefix ,
                     array(
-//                        'params' => array('ACL' => 'public-read'),
-//                        'concurrency' => 10,
+                       // 'params' => array('ACL' => 'public-read'),
+                       // 'concurrency' => 10,
                         'debug' => true
                     )
                 );
-            
-            
-            
-            
-            
+
         } catch (AwsException $ex) {
             var_dump($ex->getMessage());
         } catch (CredentialsException $ex) {
@@ -340,23 +371,23 @@ class SitePlugger {
 
     public function run_plugger($mode){
         switch($mode){
-            
+
             case "scan_pages":
                 $this->client = new Client();
                 $this->log_file = fopen($this->log_file_name, "a");
                 $this->logged_urls = $this->read_log_lines();
-        
+
                 $this->scan_pages($this->base_site, 0);
                 break;
-            
+
             case "logger_save":
                 $this->client = new Client();
                 $this->log_file = fopen($this->log_file_name, "a");
                 $this->logged_urls = $this->read_log_lines();
-        
+
                 $this->logger_save();
                 break;
-            
+
             case "save_2_s3":
                 $this->write_to_s3_bucket();
             break;
