@@ -1,7 +1,8 @@
 import os
 import re
-import urllib
 import json
+import urllib
+import requests
 
 
 class Siteplugger:
@@ -45,19 +46,22 @@ class Siteplugger:
 
 
     def __init__(self):
-        self.plugin_path =  os.getcwd() + "/../wp-content/plugins/site-plugger/"
+        self.plugin_path =  os.getcwd() + "/site-plugger/"
 
     def __del__(self):
         if self.log_file :
             self.log_file.close()
 
-    def js_op(msg,error = False):
+    def js_op(self,msg = [],error = False):
+        msg_flg = []
         if error == False :
-            msg['flag'] ='false'
+            msg_flg.append('False')
         else:
-            msg['flag'] = 'True'
+            msg_flg.append('True')
 
-        print (json.dumps(msg))
+        msg_flg.append(msg)
+
+        print (json.dumps(msg_flg))
         exit
 
     def setSave_directory(self,save_directory) :
@@ -108,18 +112,30 @@ class Siteplugger:
         return list(set(uniq_array))
 
     def extract_hrefs(self, content):
+
         pattern = '/href=\"(.+)\"|value=\"(.+)\"|href=\'(.+)\'|value=\'(.+)\'/'
 
         uniq_array = []
         matches = re.finditer(pattern, content)
-        if matches.length:
+
+        print(matches)
+        # if len(matches):
+        if 1:
 
             for exact_matches in matches:
-                for match in exact_matches:
-                    match = match.find(match, -1)
+                matchx = []
+                matchx.append(exact_matches.group(0))
+                matchx.append(exact_matches.group(1))
+                matchx.append(exact_matches.group(2))
+                matchx.append(exact_matches.group(3))
+                matchx.append(exact_matches.group(4))
 
-                    if match.find('"') > 0:
-                        match = match.find(match, 0, match.find('"'))
+                for match in matchx:
+                    if match is not None and match is not int:
+                        match = match.find(match, -1)
+
+                        if match.find('"') > 0:
+                            match = match.find(match, 0, match.find('"'))
 
                         if match.find("'") > 0:
                             match = match.find(match, 0, match.find("'"))
@@ -128,14 +144,14 @@ class Siteplugger:
                             link_to_test = match.strip("/")
 
                             link_parsed = urllib.parse(link_to_test)
-                        if  not link_parsed['query'] and not link_parsed['fragment']:
+                            if  not link_parsed['query'] and not link_parsed['fragment']:
 
-                            if not link_parsed['path']:
-                                link_path = link_parsed['path']
-                                link_path = link_path.split("/")
+                                if not link_parsed['path']:
+                                    link_path = link_parsed['path']
+                                    link_path = link_path.split("/")
 
-                                if link_path[len(link_path) - 1] not in  self.skip_path_array:
-                                    uniq_array.append(link_to_test)
+                                    if link_path[len(link_path) - 1] not in  self.skip_path_array:
+                                        uniq_array.append(link_to_test)
 
         else:
             print("\n Error 4")
@@ -195,7 +211,7 @@ class Siteplugger:
 #
     def save_file(self,uri,filename,content):
         _local_path_file = uri + filename + self.save_ext
-        file_save = open(_local_path_file, "w+")
+        file_save = open(_local_path_file, "w")
 
         print("\n len=" + len(content))
 
@@ -209,23 +225,23 @@ class Siteplugger:
 
     def run_plugger(self,mode):
         if mode == "scan_pages":
-            self.client = urllib.request
-            self.log_file = self.log_file.open(self.plugin_path + self.log_file_name, "a")
+            self.client = requests
+            self.log_file = open(self.plugin_path + self.log_file_name, "w")
             self.logged_urls = self.read_log_lines()
 
             self.scan_pages(self.base_site, 0)
 
         elif mode == "logger_save":
-            self.client = urllib.request
-            self.log_file = self.log_file.open(self.plugin_path + self.log_file_name, "a")
+            self.client = requests
+            self.log_file = open(self.plugin_path + self.log_file_name, "w")
             self.logged_urls = self.read_log_lines()
 
             self.logger_save()
 
 
         elif mode == "single_save":
-            self.client = urllib.request
-            self.log_file = self.log_file.open(self.plugin_path + self.log_file_name, "a")
+            self.client = requests
+            self.log_file = open(self.plugin_path + self.log_file_name, "a")
 
 
             # case "save_2_s3":
@@ -240,8 +256,8 @@ class Siteplugger:
 
 
     def read_log_lines(self,show_error = True):
-        readfp = open(self.plugin_path . self.log_file_name, "r")
-        if os.path.getsize(self.plugin_path . self.log_file_name) > 0:
+        readfp = open(self.plugin_path + self.log_file_name, "r")
+        if os.path.getsize(self.plugin_path + self.log_file_name) > 0:
             log_file_size =  os.path.getsize(self.plugin_path . self.log_file_name)
         else:
             log_file_size = 0
@@ -256,7 +272,7 @@ class Siteplugger:
 
             else :
                 if (show_error == True) :
-                    self.js_op(["error"  "no file log exist!!!"], True)
+                    self.js_op([ "no file log exist!!!"], True)
 
             return []
 
@@ -269,16 +285,16 @@ class Siteplugger:
 
     def scan_pages(self,page_url, deep = 0) :
 
-        print("\n rec=>".deep)
+        print("\n rec=>" , deep)
         # sleep(rand(1,2))
 
-        print("\n Page=:page_url")
+        print("\n Page=" +page_url)
 
         self.make_simple_get(page_url)
 
         status_code = self.status_code()
 
-        print("\n Status Code : status_code")
+        print("\n Status Code : ",status_code)
         if status_code == 200  :
             page_content = self.get_body()
 
@@ -287,6 +303,7 @@ class Siteplugger:
                 if self.replace_domain_in_file == True :
                     page_content = self.replace_domain(page_content)
 
+                print (page_content)
                 self.save_file_and_path(page_url, page_content)
 
             page_links = self.extract_hrefs(page_content)
@@ -346,7 +363,7 @@ class Siteplugger:
 
 
     def make_simple_get(self,url):
-            self.response = self.client.urlopen(url)
+            self.response = self.client.request("GET",url)
 
          # catch ClientException  :
          #    self.js_op(["error"  ex->getMessage()],True)
@@ -365,14 +382,14 @@ class Siteplugger:
 
     def status_code(self):
         if self.response:
-            return self.response.getcode()
+            return self.response.status_code
         else :
             return False
 
 
 
     def get_body(self):
-        return self.response.read()
+        return self.response.content
 
 
 
