@@ -3,6 +3,7 @@ import re
 import json
 import urllib
 import requests
+import urlparse
 
 
 class Siteplugger:
@@ -118,7 +119,7 @@ class Siteplugger:
         uniq_array = []
         matches = re.finditer(pattern, content)
 
-        print(matches)
+        # print(matches)
         # if len(matches):
         if 1:
 
@@ -132,26 +133,28 @@ class Siteplugger:
 
                 for match in matchx:
                     if match is not None and match is not int:
-                        match = match.find(match, -1)
+                        match = match[0:-1]
 
-                        if match.find('"') > 0:
+                        if match.find('"') is not -1:
                             match = match.find(match, 0, match.find('"'))
 
-                        if match.find("'") > 0:
+                        elif match.find("'") is not -1:
                             match = match.find(match, 0, match.find("'"))
 
-                        if match.find(self.base_site) == 0:
-                            link_to_test = match.strip("/")
+                        if not isinstance(match,int):
+                            # print(match)
+                            if match.find(self.base_site) == 0:
+                                link_to_test = match.strip("/")
+                                # urlparse.urlparse()
+                                link_parsed = urlparse.urlparse(link_to_test)
+                                if  not link_parsed.query and not link_parsed.fragment:
 
-                            link_parsed = urllib.parse(link_to_test)
-                            if  not link_parsed['query'] and not link_parsed['fragment']:
+                                    if not link_parsed.path:
+                                        link_path = link_parsed.path
+                                        link_path = link_path.split("/")
 
-                                if not link_parsed['path']:
-                                    link_path = link_parsed['path']
-                                    link_path = link_path.split("/")
-
-                                    if link_path[len(link_path) - 1] not in  self.skip_path_array:
-                                        uniq_array.append(link_to_test)
+                                        if link_path[len(link_path) - 1] not in  self.skip_path_array:
+                                            uniq_array.append(link_to_test)
 
         else:
             print("\n Error 4")
