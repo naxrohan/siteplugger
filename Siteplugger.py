@@ -40,20 +40,22 @@ class Siteplugger:
     # Save file extention
     save_ext = ".html"
     log_file = 0
+    done_file = 0
 
     # Log file name
     log_file_name = "scanner_log_.txt"
+    done_file_name = "done_log_.txt"
     plugin_path = ""
 
 
     def __init__(self):
-        self.plugin_path =  os.getcwd() + "/site-plugger/"
+        self.plugin_path = os.getcwd() + "/site-plugger/"
 
     def __del__(self):
         if self.log_file :
             self.log_file.close()
 
-    def js_op(self,msg = [],error = False):
+    def js_op(self, msg=[], error=False):
         msg_flg = []
         if error == False :
             msg_flg.append('False')
@@ -62,27 +64,26 @@ class Siteplugger:
 
         msg_flg.append(msg)
 
-        print (json.dumps(msg_flg))
+        print json.dumps(msg_flg)
         exit
 
-    def setSave_directory(self,save_directory) :
-        save_directory = self.plugin_path + save_directory
+    def set_save_directory(self, save_dir):
+        save_directory = self.plugin_path + save_dir
 
-        print(save_directory)
+        if not self.folder_exist(save_directory):
 
-        if self.folder_exist( save_directory ):
-
-            if os.mkdir(save_directory,777) :
-                self.js_op(["error" "Error creating folder:self.save_directory"], True)
+            if os.mkdir(save_directory, 777):
+                print "Error creating folder:", save_directory
                 exit
-            else :
-                print("\n Created folder:self.save_directory")
+            else:
+                print("Created folder:", save_directory)
 
         else:
-            print("\n  Folder already exists:1: self.save_directory")
+            print("Folder already exists:1:", save_directory)
 
     def folder_exist(self, directory):
         exist = os.path.isdir(directory)
+
         return exist
 
     def isset(variable):
@@ -114,22 +115,24 @@ class Siteplugger:
 
     def extract_hrefs(self, content):
 
-        pattern = '/href=\"(.+)\"|value=\"(.+)\"|href=\'(.+)\'|value=\'(.+)\'/'
+        pattern = 'href=(["\'](.*?)["\'])|value=(["\'](.*?)["\'])'
 
         uniq_array = []
+        # matches = re.finditer(pattern1, content)
         matches = re.finditer(pattern, content)
 
-        # print(matches)
         # if len(matches):
         if 1:
-
             for exact_matches in matches:
+
                 matchx = []
                 matchx.append(exact_matches.group(0))
                 matchx.append(exact_matches.group(1))
                 matchx.append(exact_matches.group(2))
-                matchx.append(exact_matches.group(3))
-                matchx.append(exact_matches.group(4))
+                # matchx.append(exact_matches.group(3))
+                # matchx.append(exact_matches.group(4))
+
+                print(matchx)
 
                 for match in matchx:
                     if match is not None and match is not int:
@@ -147,9 +150,9 @@ class Siteplugger:
                                 link_to_test = match.strip("/")
                                 # urlparse.urlparse()
                                 link_parsed = urlparse.urlparse(link_to_test)
-                                if  not link_parsed.query and not link_parsed.fragment:
+                                if link_parsed.query == "" and link_parsed.fragment == "":
 
-                                    if not link_parsed.path:
+                                    if link_parsed.path != "":
                                         link_path = link_parsed.path
                                         link_path = link_path.split("/")
 
@@ -161,130 +164,133 @@ class Siteplugger:
 
         return list(set(uniq_array))
 
-    def replace_domain(content):
-                r_content = re.sub("#(self.base_site)#", "self.replace_site", content)
+    def replace_domain(self, content_body):
+        r_content = re.sub(self.base_site, self.replace_site, content_body)
 
-                if r_content.length > 0:
-                    content = r_content
-                    print("\n replace = done")
-                else:
-                    print("\n no replaced")
+        if len(r_content) > 0:
+            content = r_content
+            print("\n replace = done")
+        else:
+            print("\n no replaced")
 
-                return content
+        return content
 
-    def save_file_and_path(self,url, content):
-        parsed_url = urllib.parse(url)
+    def save_file_and_path(self, url, content):
+        parsed_url = urlparse.urlparse(url)
 
-        if not parsed_url['path'] not in parsed_url :
-            url_path = parsed_url['path'].strip("/")
-            url_path = url_path.split("/",-1)
+        if not parsed_url.path not in parsed_url:
+            url_path = parsed_url.path.strip("/")
+            url_path = url_path.split("/", -1)
 
             if len(url_path) > 1:
                 file_name = url_path.pop()
 
                 rest_folder_path = "/".join( url_path)
-                rest_folder_path = self.save_directory + "/" + rest_folder_path
+                rest_folder_path = self.plugin_path + self.save_directory + "/" + rest_folder_path
 
-                if self.folder_exist(rest_folder_path):
+                if not self.folder_exist(rest_folder_path):
 
-                    if not os.mkdir(rest_folder_path,777):
-                        print("\n Error creating folder: :rest_folder_path")
-                    else :
-                        print("\n Success creating folder: :rest_folder_path")
+                    #Create Folder structure
+                    os.makedirs(rest_folder_path)
+
+                    if not os.path.exists(rest_folder_path):
+                        print("Error creating folder:", rest_folder_path)
+                    else:
+                        print("Success creating folder:", rest_folder_path)
 
                 else:
-                    print("\n  Folder already exists:2: self.save_directory")
+                    print("Folder already exists:2: ", self.save_directory)
                     exit
 
-            else :
+            else:
                 if url_path[0] == " ":
-                    file_name =  url_path[0]
+                    file_name = url_path[0]
                 else:
-                    file_name =  "index--not-home"
+                    file_name = "index--not-home"
 
-                rest_folder_path = self.save_directory + "/"
+                rest_folder_path = self.plugin_path + self.save_directory + "/"
 
-
-            # save file here
+            #save file here
             self.save_file(rest_folder_path + "/", file_name, content)
-        else :
-            self.save_file(self.save_directory + "/", "index", content)
+            self.write_done_lines(url)
+        else:
+            self.save_file(self.plugin_path + self.save_directory + "/", "index", content)
+            self.write_done_lines(url)
 
+    def save_file(self, uri, filename, content):
 
-#
-    def save_file(self,uri,filename,content):
         _local_path_file = uri + filename + self.save_ext
-        file_save = open(_local_path_file, "w")
 
-        print("\n len=" + len(content))
+        if not os.path.isfile(_local_path_file):
+            file_save = open(_local_path_file, "w")
 
-        if not file_save.write(self,content):
-            print("\n file save error: :_local_path_file")
-        else :
-            print("\n file save success: :_local_path_file")
+            print("len=", len(content))
 
-        file_save.close()
+            if not file_save.write(content) :
+                print("file save success:", _local_path_file)
 
+            file_save.close()
+        else:
+            print("skip save,exists:", _local_path_file)
 
     def run_plugger(self,mode):
         if mode == "scan_pages":
             self.client = requests
             self.log_file = open(self.plugin_path + self.log_file_name, "w")
-            self.logged_urls = self.read_log_lines()
+            self.logged_urls = self.read_log_lines(False,self.log_file_name)
 
             self.scan_pages(self.base_site, 0)
 
         elif mode == "logger_save":
             self.client = requests
-            self.log_file = open(self.plugin_path + self.log_file_name, "w")
-            self.logged_urls = self.read_log_lines()
+            self.log_file = open(self.plugin_path + self.log_file_name, "r")
+            self.done_file = open(self.plugin_path + self.done_file_name, 'w')
 
             self.logger_save()
 
-
         elif mode == "single_save":
             self.client = requests
-            self.log_file = open(self.plugin_path + self.log_file_name, "a")
-
+            self.log_file = open(self.plugin_path + self.log_file_name, "r")
 
             # case "save_2_s3":
             #     self.write_to_s3_bucket()
             # break
 
-
-
-
     def write_log_line(self,link):
         self.log_file.write(link + "\n")
 
+    def write_done_lines(self,link):
+        self.done_file.write(link + "\n")
 
-    def read_log_lines(self,show_error = True):
-        readfp = open(self.plugin_path + self.log_file_name, "r")
-        if os.path.getsize(self.plugin_path + self.log_file_name) > 0:
-            log_file_size =  os.path.getsize(self.plugin_path . self.log_file_name)
+    def read_log_lines(self,show_error = True,file_name = "log_file_name"):
+
+        final_log_path =  self.plugin_path + file_name
+
+        readfp = open(final_log_path, "r")
+
+        if os.path.getsize(final_log_path) > 0:
+            log_file_size = os.path.getsize(final_log_path)
         else:
             log_file_size = 0
 
-        status = readfp.read(log_file_size)
-        if status != False:
+        print (file_name + " log size=", log_file_size)
+
+        log_content = readfp.read(log_file_size)
+
+        if log_content != False:
             readfp.close()
-            allreadline = status.split("\n")
+            allreadline = log_content.split("\n")
 
-            if allreadline is [] :
+            if allreadline is not []:
                 return list(set(allreadline))
+            else:
+                print "no file log exist?"
+                return []
 
-            else :
-                if (show_error == True) :
-                    self.js_op([ "no file log exist!!!"], True)
-
-            return []
-
-        else :
-            if show_error == True:
-                self.js_op(["error" "no file log exist!!!"],True)
+        else:
+            print "no file log exist!"
 
         return []
-
 
     def scan_pages(self,page_url, deep = 0) :
 
@@ -324,22 +330,20 @@ class Siteplugger:
                     self.scan_pages(page_link, deep)
 
                 else :
-                    print("\n Skipped: :page_link")
-
+                    print("\n Skipped: ",page_link)
 
             print("\n unique=")
             print(len(self.all_urls))
             if len(self.all_urls) == 0 :
-                self.js_op(["success" "Scanning Complete"],False)
+                print  "Scanning Complete..."
 
         else :
-            self.js_op(["error" "Error 1-> :status_code"],True)
-
-
+            print "Error 1->",status_code
 
     def single_saver(self, line = ""):
         self.make_simple_get(line)
         content =  self.get_body()
+        content = content.content
 
         if self.replace_domain_in_file == True :
           content = self.replace_domain(content)
@@ -350,49 +354,49 @@ class Siteplugger:
         #  TODO: sent back failure too
 
     def logger_save(self):
-        log_lines = self.read_log_lines()
+        log_lines = self.read_log_lines(False,self.log_file_name)
+        done_lines = self.read_log_lines(False,self.done_file_name)
 
-        if len(log_lines) > 0 :
-            for line in log_lines  :
-                self.make_simple_get(line)
-                content =  self.get_body()
+        if len(log_lines) > 0:
+            for line in log_lines:
+                if line.strip(" ") != "":
+                    line = line.strip(" ")
+                    if not line in done_lines:
+                        self.make_simple_get(line)
+                        status_code = self.status_code()
 
-                if self.replace_domain_in_file == True:
-                    content = self.replace_domain(content)
+                        print "code=", status_code
 
-                self.save_file_and_path(line, content)
-        else :
-            self.js_op(["error" "Log file empty!!"],True)
+                        content = self.get_body()
+                        content = content.content
 
+                        if self.replace_domain_in_file == True:
+                            content = self.replace_domain(content)
 
-    def make_simple_get(self,url):
-            self.response = self.client.request("GET",url)
+                        self.save_file_and_path(line, content)
+                    else:
+                        print "link already done"
+                else:
+                    print "Blank line skipped"
+        else:
+            print"Log file empty!!"
 
-         # catch ClientException  :
-         #    self.js_op(["error"  ex->getMessage()],True)
-         # catch (ConnectException ex) :
-         #    self.js_op(["error"=> ex->getMessage()],True)
-         # catch (BadResponseException ex) :
-         #    self.js_op(["error"=> ex->getMessage()],True)
-         # catch (RequestException ex) :
-         #    self.js_op(["error"=> ex->getMessage()],True)
-         # catch (TooManyRedirectsException ex) :
-         #    self.js_op(["error"=> ex->getMessage()],True)
-         # catch (ServerException ex) :
-         #    self.js_op(["error"=> ex->getMessage()],Truematches)
-
-
+    def make_simple_get(self, url):
+        print "request_url=" + url
+        try:
+            self.response = self.client.request("GET", url)
+        except requests.exceptions.RequestException as ex:
+            print ex
 
     def status_code(self):
         if self.response:
             return self.response.status_code
-        else :
+        else:
             return False
 
-
-
     def get_body(self):
-        return self.response.content
+        print self.response
+        return self.response
 
 
 
@@ -433,6 +437,6 @@ class Siteplugger:
 #                     )
 #                 )
 #          catch (AwsException ex) :
-#             self.js_op(["error"=> ex->getMessage()],true)
+#             print "error" +  ex->getMessage()
 #          catch (CredentialsException ex) :
-#             self.js_op(["error"=> ex->getMessage()],true)
+#             print "error" +  ex->getMessage()
