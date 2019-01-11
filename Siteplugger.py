@@ -244,7 +244,7 @@ class Siteplugger:
         elif mode == "logger_save":
             self.client = requests
             self.log_file = open(self.plugin_path + self.log_file_name, "r")
-            self.done_file = open(self.plugin_path + self.done_file_name, 'w')
+            self.done_file = open(self.plugin_path + self.done_file_name, 'a')
 
             self.logger_save()
 
@@ -264,7 +264,7 @@ class Siteplugger:
 
     def read_log_lines(self,show_error = True,file_name = "log_file_name"):
 
-        final_log_path =  self.plugin_path + file_name
+        final_log_path = self.plugin_path + file_name
 
         readfp = open(final_log_path, "r")
 
@@ -375,7 +375,7 @@ class Siteplugger:
 
                         self.save_file_and_path(line, content)
                     else:
-                        print "link already done"
+                        print "link already done:" + line
                 else:
                     print "Blank line skipped"
         else:
