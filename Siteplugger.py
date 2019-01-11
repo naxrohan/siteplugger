@@ -1,9 +1,11 @@
 import os
+import sys
 import re
 import json
 import urllib
 import requests
 import urlparse
+import boto3
 
 
 class Siteplugger:
@@ -252,9 +254,9 @@ class Siteplugger:
             self.client = requests
             self.log_file = open(self.plugin_path + self.log_file_name, "r")
 
-            # case "save_2_s3":
-            #     self.write_to_s3_bucket()
-            # break
+        elif mode == "save_2_s3":
+            self.write_to_s3_bucket()
+
 
     def write_log_line(self,link):
         self.log_file.write(link + "\n")
@@ -398,45 +400,67 @@ class Siteplugger:
         print self.response
         return self.response
 
+    def write_to_s3_bucket(self,create_bucket = False) :
+
+        s3client = boto3.client('s3')
+
+        list_buckets_resp = s3client.list_buckets()
+        for bucket in list_buckets_resp['Buckets']:
+
+            # print bucket
+
+            if bucket['Name'] == self.save_bucket_s3:
+                print('(Just created) --> {} - there since {}'.format(bucket['Name'], bucket['CreationDate']))
+
+                self.sync_to_s3(
+                    self.plugin_path + self.save_directory,
+                    self.s3_region,
+                    self.save_bucket_s3
+                )
+
+            else:
+                print "Bucket not exist: name=",self.save_bucket_s3
 
 
-#     public function write_to_s3_bucket(create_bucket = false) :
-#
-#         try :
-#             provider = CredentialProvider::defaultProvider()
-#
-#             s3Client = new S3Client([
-#                 'region' => self.s3_region,
-#                 'version' => '2006-03-01',
-#                 'credentials' => provider
-#             ])
-#
-#             buckets = s3Client->listBuckets()
-#
-#             if(!in_array(self.save_bucket_s3, buckets['Buckets'])):
-#                 echo "\n Bucket not exits --:self.save_bucket_s3 !!"
-#
-#                 if(isset(create_bucket)):
-#                     //Creating S3 Bucket
-#                     echo "\n creating Bucket -- :self.save_bucket_s3"
-#                     result = s3Client->createBucket([
-#                         'Bucket' => self.save_bucket_s3,
-#                     ])
-#                 else:
-#                     exit
-#                 
-#             
-#             s3Client->uploadDirectory(
-#                     self.save_directory,
-#                     self.save_bucket_s3,
-#                     self.s3_prefix ,
-#                     array(
-#                        // 'params' => array('ACL' => 'public-read'),
-#                        // 'concurrency' => 10,
-#                         'debug' => true
-#                     )
-#                 )
-#          catch (AwsException ex) :
-#             print "error" +  ex->getMessage()
-#          catch (CredentialsException ex) :
-#             print "error" +  ex->getMessage()
+    def sync_to_s3(self,target_dir, aws_region, bucket_name):
+        if not os.path.isdir(target_dir):
+            raise ValueError('target_dir %r not found.' % target_dir)
+
+        all_files = []
+        for root, dirs, files in os.walk(target_dir):
+            all_files += [os.path.join(root, f) for f in files]
+
+        s3_resource = boto3.resource('s3')
+        for local_file in all_files:
+            filename = local_file.split(self.save_bucket_s3)[1]
+            print filename
+
+            filename = filename[len(filename) - 1]
+            file_obj = s3_resource.Object(
+                        bucket_name,
+                        filename
+                    ).put(Body=open(local_file, 'rb'))
+
+            print file_obj
+            exit;
+
+        print "Total Local Files=", len(all_files)
+
+
+
+
+
+        #====Check existing files in s3
+        # list_objects = s3client.list_objects(Bucket=self.save_bucket_s3 )
+        # print "total objects=", len(list_objects['Contents'])
+        # for s3files in list_objects['Contents']:
+        # print s3files['Key']
+        # print s3files['LastModified']
+        # print s3files['Size']
+        # print s3files['Name'] + "-->" + s3files['Key'] + "\n";
+        # ====Check existing files in s3
+
+
+
+
+
