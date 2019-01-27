@@ -7,6 +7,7 @@ import requests
 import urlparse
 import boto3
 import zipfile
+import datetime
 
 
 class Siteplugger:
@@ -49,10 +50,11 @@ class Siteplugger:
     log_file_name = "scanner_log_.txt"
     done_file_name = "done_log_.txt"
     plugin_path = ""
+    local_dir = "site-plugger/"
 
 
     def __init__(self):
-        self.plugin_path = os.getcwd() + "/site-plugger/"
+        self.plugin_path = os.getcwd() + "/" + self.local_dir
 
     def __del__(self):
         if self.log_file :
@@ -388,7 +390,7 @@ class Siteplugger:
             # print bucket
 
             if bucket['Name'] == self.save_bucket_s3:
-                print('(Just created) --> {} - there since {}'.format(bucket['Name'], bucket['CreationDate']))
+                print('Bucket={} exists since={}'.format(bucket['Name'], bucket['CreationDate']))
 
                 self.sync_to_s3(
                     self.plugin_path + self.save_directory,
@@ -397,22 +399,35 @@ class Siteplugger:
                 )
 
             else:
-                print "Bucket not exist: name=",self.save_bucket_s3
+                print "Bucket not exist: name=\n", self.save_bucket_s3
 
-    def gzip_local_folder(self, path, ziph):
+    def gzip_local_folder(self, path):
+        # get current date
+        now = datetime.datetime.now()
+        zip_file_name = self.save_directory + "_" + now.strftime("%Y%m%d_%H%M") + '.zip'
+        zipf = zipfile.ZipFile(zip_file_name, 'w', zipfile.ZIP_DEFLATED)
+        # Done: add non root target dir to zip file
+
         # ziph is zipfile handle
         for root, dirs, files in os.walk(path):
             for file in files:
-                ziph.write(os.path.join(root, file))
+                zipf.write(os.path.join(root, file))
 
-                #ToDo: add non root target dir to zip file
-                #Todo: move zip to s3 bucket & un zip via lamda function to save on usage bandwidth
-
-    def sync_to_s3(self,target_dir, aws_region, bucket_name):
-
-        zipf = zipfile.ZipFile('Python.zip', 'w', zipfile.ZIP_DEFLATED)
-        self.gzip_local_folder(target_dir, zipf)
         zipf.close()
+        file_stats = os.stat(zip_file_name)
+
+        print "Zip file created name={} size={}\n".format(zip_file_name, file_stats.st_size)
+        # Todo: move zip to s3 bucket & un zip via lamda function to save on usage bandwidth
+
+        return zip_file_name
+
+    def sync_to_s3(self, target_dir, aws_region, bucket_name):
+
+        # ====send compressed target folder
+        to_zip_dir = self.local_dir + self.save_directory
+        file_to_move = self.gzip_local_folder(to_zip_dir)
+
+        all_files = [file_to_move]
 
         # ====Check existing files in s3
         # s3client = boto3.client('s3')
@@ -423,25 +438,30 @@ class Siteplugger:
         #     print s3files['LastModified']
         #     print s3files['Size']
         #     print s3files['Name'] + "-->" + s3files['Key'] + "\n";
-        # ====Check existing files in s3
 
+        # ====send full uncompressed target folder
         # if not os.path.isdir(target_dir):
         #     raise ValueError('target_dir %r not found.' % target_dir)
         # all_files = []
         # for root, dirs, files in os.walk(target_dir):
         #     all_files += [os.path.join(root, f) for f in files]
-        # s3_resource = boto3.resource('s3')
-        # for local_file in all_files:
-        #     filename = local_file.split(self.save_bucket_s3)
-        #     print filename[1]
-        #     filename = filename[len(filename) - 1]
-        #     file_obj = s3_resource.Object(
-        #                 bucket_name,
-        #                 self.s3_prefix + filename
-        #             ).put(Body=open(local_file, 'rb'))
-        #     print file_obj
-        #     exit;
-        # print "Total Local Files=", len(all_files)
+
+        s3_resource = boto3.resource('s3')
+        for local_file in all_files:
+
+            # ====get only file name from folder
+            # filename = local_file.split(self.save_bucket_s3)
+
+            filename = local_file
+            print "moving file={}\n".format(filename)
+
+            file_obj = s3_resource.Object(
+                        bucket_name,
+                        self.s3_prefix + "/" + filename
+                    ).put(Body=open(local_file, 'rb'))
+            print file_obj
+
+        print "Total Local Files=", len(all_files)
 
     def run_plugger(self, mode):
         if mode == "scan_pages":
