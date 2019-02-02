@@ -1,8 +1,6 @@
 import os
-import sys
 import re
 import json
-import urllib
 import requests
 import urlparse
 import boto3
@@ -10,7 +8,7 @@ import zipfile
 import datetime
 
 
-class Siteplugger:
+class siteplugger:
     'Main SitePlugger class'
 
     client = 0

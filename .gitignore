@@ -1,3 +1,6 @@
 vendor
 log*
 .env
+.idea/*
+*.pyc
+venv/*
