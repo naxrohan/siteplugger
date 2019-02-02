@@ -7,3 +7,6 @@ Runner.py ---help article
  `local_saver - to save new pages that are found.`
  
  `write_s3    - copy new files to s3 bucket.`
+ 
+ 
+ aws lambda update-function-code --function-name siteplugger --zip-file fileb://function.zip
