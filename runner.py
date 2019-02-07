@@ -36,7 +36,10 @@ def runner_handler(event, context):
             }
 
         elif event['cmd'] == "local_saver":
-            scanner.run_plugger(siteplugger.siteplugger(), "logger_save")
+            response = scanner.run_plugger(siteplugger.siteplugger(), "logger_save")
+            return {
+                'message': json.dumps(response)
+            }
 
         elif event['cmd'] == "write_s3":
             scanner.run_plugger(siteplugger.siteplugger(), "save_2_s3")

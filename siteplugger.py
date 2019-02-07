@@ -184,6 +184,7 @@ class siteplugger:
         return content
 
     def save_file_and_path(self, url, content):
+        save_resp = ""
         parsed_url = urlparse.urlparse(url)
 
         if not parsed_url.path not in parsed_url:
@@ -198,7 +199,7 @@ class siteplugger:
 
                 if not self.folder_exist(rest_folder_path):
 
-                    #Create Folder structure
+                    # Create Folder structure
                     os.makedirs(rest_folder_path)
 
                     if not os.path.exists(rest_folder_path):
@@ -218,28 +219,35 @@ class siteplugger:
 
                 rest_folder_path = self.plugin_path + self.save_directory + "/"
 
-            #save file here
-            self.save_file(rest_folder_path + "/", file_name, content)
+            # save file here
+            save_resp = self.save_file(rest_folder_path + "/", file_name, content)
             self.write_done_lines(url)
         else:
-            self.save_file(self.plugin_path + self.save_directory + "/", "index", content)
+            save_resp =self.save_file(self.plugin_path + self.save_directory + "/", "index", content)
             self.write_done_lines(url)
 
-    def save_file(self, uri, filename, content):
+        return save_resp
 
+    def save_file(self, uri, filename, content):
+        msg = ""
         _local_path_file = uri + filename + self.save_ext
 
         if not os.path.isfile(_local_path_file):
             file_save = open(_local_path_file, "w")
 
             print("len=", len(content))
+            msg += "len=", len(content)
 
             if not file_save.write(content) :
                 print("file save success:", _local_path_file)
+                msg += "file save success:", _local_path_file
 
             file_save.close()
         else:
             print("skip save,exists:", _local_path_file)
+            msg += "skip save,exists:", _local_path_file
+
+        return msg
 
     def write_log_line(self,link):
         self.log_file.write(link + "\n")
@@ -353,8 +361,11 @@ class siteplugger:
         #  TODO: sent back failure too
 
     def logger_save(self):
-        log_lines = self.read_log_lines(False,self.log_file_name)
-        done_lines = self.read_log_lines(False,self.done_file_name)
+        message = []
+        message['function'] = 'scan_pages'
+
+        log_lines = self.read_log_lines(False, self.log_file_name)
+        done_lines = self.read_log_lines(False, self.done_file_name)
 
         if len(log_lines) > 0:
             for line in log_lines:
@@ -365,6 +376,7 @@ class siteplugger:
                         status_code = self.status_code()
 
                         print "code=", status_code
+                        message['status_code'] = status_code
 
                         content = self.get_body()
                         content = content.content
@@ -372,13 +384,20 @@ class siteplugger:
                         if self.replace_domain_in_file == True:
                             content = self.replace_domain(content)
 
-                        self.save_file_and_path(line, content)
+                        save_response = self.save_file_and_path(line, content)
+                        message['status_msg'] = save_response
+                        return message
                     else:
                         print "link already done:" + line
+                        message['status_msg'] = "link already done:" + line
                 else:
                     print "Blank line skipped"
+                    message['status_msg'] = "Blank line skipped"
         else:
             print"Log file empty!!"
+            message['status_msg'] = "Log file empty!!"
+            return message
+
 
     def make_simple_get(self, url):
         print "request_url=" + url
