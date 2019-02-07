@@ -1,6 +1,7 @@
 import siteplugger
 import sys
 import os
+import json
 
 
 def runner_handler(event, context):
@@ -29,7 +30,10 @@ def runner_handler(event, context):
                 'message': "Options below: \n\nscan_pages  - to scan for new pages in site.. \nlocal_saver - to save new pages that are found.. \nwrite_s3 - copy new files to s3 bucket.. \n"
             }
         elif event['cmd'] == "scan_pages":
-            scanner.run_plugger(siteplugger.siteplugger(), "scan_pages")
+            response = scanner.run_plugger(siteplugger.siteplugger(), "scan_pages")
+            return {
+                'message': json.dumps(response)
+            }
 
         elif event['cmd'] == "local_saver":
             scanner.run_plugger(siteplugger.siteplugger(), "logger_save")

@@ -277,24 +277,28 @@ class siteplugger:
 
         return []
 
-    def scan_pages(self,page_url, deep = 0) :
+    def scan_pages(self, page_url, deep=0):
 
         print("\n rec=>", deep)
         # sleep(rand(1,2))
+        message = []
+        message['function'] = 'scan_pages'
 
-        print("\n Page=" +page_url)
+        print("\n Page=" + page_url)
+        message['page'] = page_url
 
         self.make_simple_get(page_url)
 
         status_code = self.status_code()
 
-        print("\n Status Code : ",status_code)
-        if status_code == 200  :
+        print("\n Status Code : ", status_code)
+        message['status_code'] = status_code
+        if status_code == 200:
             page_content = self.get_body()
 
             if self.save_files == True:
 
-                if self.replace_domain_in_file == True :
+                if self.replace_domain_in_file == True:
                     page_content = self.replace_domain(page_content)
 
                 # print (page_content)
@@ -305,25 +309,35 @@ class siteplugger:
 
             print("\n found pages=")
             print(len(page_links))
-            for page_link in page_links :
+            message['pages_found'] = len(page_links)
+            for page_link in page_links:
 
-                if not page_link in self.all_urls  and not page_link in self.logged_urls:
+                if not page_link in self.all_urls and not page_link in self.logged_urls:
 
                     self.write_log_line(page_link)
                     self.all_urls.append(page_link)
-                    deep += 1
-                    self.scan_pages(page_link, deep)
-                    break
+
+                    message['status_msg'] = "Scan Done"
+                    return message
+
+                    # Break execution here to prevent recursion
+                    # deep += 1
+                    # self.scan_pages(page_link, deep)
+
                 else:
                     print("\n Skipped: ", page_link)
 
             print("\n unique=")
             print(len(self.all_urls))
-            if len(self.all_urls) == 0 :
-                print  "Scanning Complete..."
+            if len(self.all_urls) == 0:
+                print "Scanning Complete..."
+                message['status_msg'] = "Error 2->", status_code
+                return message
 
         else:
-            print "Error 1->",status_code
+            print "Error 1->", status_code
+            message['status_msg'] = "Error 1->", status_code
+            return message
 
     def single_saver(self, line = ""):
         self.make_simple_get(line)
@@ -472,7 +486,7 @@ class siteplugger:
             self.log_file = open(self.plugin_path + self.log_file_name, "a")
             self.logged_urls = self.read_log_lines(False, self.log_file_name)
 
-            self.scan_pages(self.base_site, 0)
+            return self.scan_pages(self.base_site, 0)
 
         elif mode == "logger_save":
             self.client = requests
