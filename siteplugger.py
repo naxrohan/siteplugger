@@ -1,11 +1,11 @@
 import os
 import re
 import json
-import requests
 import urlparse
 import boto3
 import zipfile
 import datetime
+from botocore.vendored import requests
 
 
 class siteplugger:
@@ -14,11 +14,11 @@ class siteplugger:
     client = 0
     response = 0
 
-    #full URL of site to scan
+    # full URL of site to scan
     base_site = ""
     replace_site = ""
 
-    #relative path of writable directory
+    # relative path of writable directory
     save_directory = ""
     save_bucket_s3 = ""
     s3_prefix = ""
@@ -38,6 +38,7 @@ class siteplugger:
     # Enable/ Disable file save
     save_files = False
     replace_domain_in_file = False
+    replace_domain_in_file = False
 
     # Save file extention
     save_ext = ".html"
@@ -48,11 +49,15 @@ class siteplugger:
     log_file_name = "scanner_log_.txt"
     done_file_name = "done_log_.txt"
     plugin_path = ""
-    local_dir = "site-plugger/"
 
+    # Set plugger folder
+    local_dir = ""
 
     def __init__(self):
-        self.plugin_path = os.getcwd() + "/" + self.local_dir
+        # for local folder
+        # self.plugin_path = os.getcwd() + "/" + self.local_dir
+        # for lambda folder
+        self.plugin_path = "/tmp/" + self.local_dir
 
     def __del__(self):
         if self.log_file :
@@ -74,7 +79,7 @@ class siteplugger:
         save_directory = self.plugin_path + save_dir
 
         if not self.folder_exist(save_directory):
-
+            print save_directory
             if os.mkdir(save_directory, 777):
                 print "Error creating folder:", save_directory
                 exit
@@ -242,7 +247,7 @@ class siteplugger:
     def write_done_lines(self,link):
         self.done_file.write(link + "\n")
 
-    def read_log_lines(self,show_error = True,file_name = "log_file_name"):
+    def read_log_lines(self,show_error=True,file_name="log_file_name"):
 
         final_log_path = self.plugin_path + file_name
 
@@ -298,7 +303,7 @@ class siteplugger:
             page_links = self.extract_hrefs(page_content)
             # image_links = self.extract_img(page_content)
 
-            print( "\n found pages=")
+            print("\n found pages=")
             print(len(page_links))
             for page_link in page_links :
 
@@ -308,16 +313,16 @@ class siteplugger:
                     self.all_urls.append(page_link)
                     deep += 1
                     self.scan_pages(page_link, deep)
-
-                else :
-                    print("\n Skipped: ",page_link)
+                    break
+                else:
+                    print("\n Skipped: ", page_link)
 
             print("\n unique=")
             print(len(self.all_urls))
             if len(self.all_urls) == 0 :
                 print  "Scanning Complete..."
 
-        else :
+        else:
             print "Error 1->",status_code
 
     def single_saver(self, line = ""):

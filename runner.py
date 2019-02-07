@@ -1,5 +1,6 @@
 import siteplugger
 import sys
+import os
 
 
 def runner_handler(event, context):
@@ -24,10 +25,9 @@ def runner_handler(event, context):
     if len(event) > 0:
 
         if event['cmd'] == "--help":
-            print "Runner.py ---help article \n\n Options below: \n\n" \
-                  "scan_pages  - to scan for new pages in site.. \n" \
-                  "local_saver - to save new pages that are found.. \n" \
-                  "write_s3    - copy new files to s3 bucket.. \n"
+            return {
+                'message': "Options below: \n\nscan_pages  - to scan for new pages in site.. \nlocal_saver - to save new pages that are found.. \nwrite_s3 - copy new files to s3 bucket.. \n"
+            }
         elif event['cmd'] == "scan_pages":
             scanner.run_plugger(siteplugger.siteplugger(), "scan_pages")
 
