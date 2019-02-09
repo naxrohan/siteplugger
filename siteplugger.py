@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import json
 import urlparse
 import boto3
@@ -54,10 +55,14 @@ class siteplugger:
     local_dir = ""
 
     def __init__(self):
-        # for local folder
-        # self.plugin_path = os.getcwd() + "/" + self.local_dir
-        # for lambda folder
-        self.plugin_path = "/tmp/" + self.local_dir
+
+        if len(sys.argv) > 1:
+            # for local folder, set the folder
+            self.local_dir = "site-plugger/"
+            self.plugin_path = os.getcwd() + "/" + self.local_dir
+        else:
+            # for lambda folder use the tmp folder
+            self.plugin_path = "/tmp/" + self.local_dir
 
     def __del__(self):
         if self.log_file :
@@ -164,7 +169,7 @@ class siteplugger:
                                         link_path = link_parsed.path
                                         link_path = link_path.split("/")
 
-                                        if link_path[len(link_path) - 1] not in  self.skip_path_array:
+                                        if link_path[len(link_path) - 1] not in self.skip_path_array:
                                             uniq_array.append(link_to_test)
 
         else:
@@ -223,7 +228,7 @@ class siteplugger:
             save_resp = self.save_file(rest_folder_path + "/", file_name, content)
             self.write_done_lines(url)
         else:
-            save_resp =self.save_file(self.plugin_path + self.save_directory + "/", "index", content)
+            save_resp = self.save_file(self.plugin_path + self.save_directory + "/", "index", content)
             self.write_done_lines(url)
 
         return save_resp
@@ -236,26 +241,26 @@ class siteplugger:
             file_save = open(_local_path_file, "w")
 
             print("len=", len(content))
-            msg += "len=", len(content)
+            msg += "len={}".format(len(content))
 
             if not file_save.write(content) :
                 print("file save success:", _local_path_file)
-                msg += "file save success:", _local_path_file
+                msg += "|file save success:{}".format(_local_path_file)
 
             file_save.close()
         else:
             print("skip save,exists:", _local_path_file)
-            msg += "skip save,exists:", _local_path_file
+            msg += "|skip save,exists:".format(_local_path_file)
 
         return msg
 
-    def write_log_line(self,link):
+    def write_log_line(self, link):
         self.log_file.write(link + "\n")
 
-    def write_done_lines(self,link):
+    def write_done_lines(self, link):
         self.done_file.write(link + "\n")
 
-    def read_log_lines(self,show_error=True,file_name="log_file_name"):
+    def read_log_lines(self, show_error=True, file_name="log_file_name"):
 
         final_log_path = self.plugin_path + file_name
 
@@ -289,11 +294,11 @@ class siteplugger:
 
         print("\n rec=>", deep)
         # sleep(rand(1,2))
-        message = []
+        message = dict()
         message['function'] = 'scan_pages'
 
         print("\n Page=" + page_url)
-        message['page'] = page_url
+        message['scan_page'] = page_url
 
         self.make_simple_get(page_url)
 
@@ -318,14 +323,16 @@ class siteplugger:
             print("\n found pages=")
             print(len(page_links))
             message['pages_found'] = len(page_links)
+            i = 0
             for page_link in page_links:
-
+                i += 1
                 if not page_link in self.all_urls and not page_link in self.logged_urls:
 
                     self.write_log_line(page_link)
                     self.all_urls.append(page_link)
 
-                    message['status_msg'] = "Scan Done"
+                    message['new_page'] = page_link
+                    message['status_msg'] = "Scan Running:"
                     return message
 
                     # Break execution here to prevent recursion
@@ -333,23 +340,24 @@ class siteplugger:
                     # self.scan_pages(page_link, deep)
 
                 else:
-                    print("\n Skipped: ", page_link)
+                    # print "Skipped ({}): {}".format(i, page_link)
+                    unique = len(self.all_urls)
+            print "unique={}".format(unique)
+            message['unique'] = unique
 
-            print("\n unique=")
-            print(len(self.all_urls))
-            if len(self.all_urls) == 0:
+            if unique == 0:
                 print "Scanning Complete..."
-                message['status_msg'] = "Error 2->", status_code
+                message['status_msg'] = "Scanning Complete:"
                 return message
 
         else:
             print "Error 1->", status_code
-            message['status_msg'] = "Error 1->", status_code
+            message['status_msg'] = "Error Occurred:", status_code
             return message
 
-    def single_saver(self, line = ""):
+    def single_saver(self, line=""):
         self.make_simple_get(line)
-        content =  self.get_body()
+        content = self.get_body()
         content = content.content
 
         if self.replace_domain_in_file == True :
@@ -361,13 +369,15 @@ class siteplugger:
         #  TODO: sent back failure too
 
     def logger_save(self):
-        message = []
+        message = dict()
         message['function'] = 'scan_pages'
 
         log_lines = self.read_log_lines(False, self.log_file_name)
         done_lines = self.read_log_lines(False, self.done_file_name)
 
+        total_link_todo = len(log_lines)
         if len(log_lines) > 0:
+            done_tmp = []
             for line in log_lines:
                 if line.strip(" ") != "":
                     line = line.strip(" ")
@@ -388,14 +398,22 @@ class siteplugger:
                         message['status_msg'] = save_response
                         return message
                     else:
+                        done_tmp.append(line)
                         print "link already done:" + line
-                        message['status_msg'] = "link already done:" + line
+                        link_just_done = len(done_tmp)
+                        message['links_done'] = link_just_done
+                        if total_link_todo == link_just_done:
+                            message['status_msg'] = "Save Complete:"
+                            return message
                 else:
                     print "Blank line skipped"
-                    message['status_msg'] = "Blank line skipped"
+                    print line.strip(" ")
+                    message['status_msg'] = "Blank line skipped:"
+
+            return message
         else:
             print"Log file empty!!"
-            message['status_msg'] = "Log file empty!!"
+            message['status_msg'] = "Log file empty!!:"
             return message
 
     def make_simple_get(self, url):
@@ -416,7 +434,7 @@ class siteplugger:
         return self.response
 
     def write_to_s3_bucket(self,create_bucket = False) :
-        message = []
+        message = dict()
         message['function'] = 'scan_pages'
         s3client = boto3.client('s3')
 
