@@ -398,7 +398,6 @@ class siteplugger:
             message['status_msg'] = "Log file empty!!"
             return message
 
-
     def make_simple_get(self, url):
         print "request_url=" + url
         try:
@@ -417,25 +416,30 @@ class siteplugger:
         return self.response
 
     def write_to_s3_bucket(self,create_bucket = False) :
-
+        message = []
+        message['function'] = 'scan_pages'
         s3client = boto3.client('s3')
 
         list_buckets_resp = s3client.list_buckets()
+        message['connection'] = "ok"
         for bucket in list_buckets_resp['Buckets']:
 
             # print bucket
 
             if bucket['Name'] == self.save_bucket_s3:
                 print('Bucket={} exists since={}'.format(bucket['Name'], bucket['CreationDate']))
+                message['bucket_status'] = 'Bucket={} exists since={}'.format(bucket['Name'], bucket['CreationDate'])
 
-                self.sync_to_s3(
+                bucket_response = self.sync_to_s3(
                     self.plugin_path + self.save_directory,
                     self.s3_region,
                     self.save_bucket_s3
                 )
+                message['bucket_status'] += "SSEKMSKeyId=" + bucket_response.SSEKMSKeyId
 
             else:
                 print "Bucket not exist: name=\n", self.save_bucket_s3
+                message['bucket_status'] = "Bucket not exist: name=\n", self.save_bucket_s3
 
     def gzip_local_folder(self, path):
         # get current date
@@ -495,7 +499,7 @@ class siteplugger:
                         bucket_name,
                         self.s3_prefix + "/" + filename
                     ).put(Body=open(local_file, 'rb'))
-            print file_obj
+            return file_obj
 
         print "Total Local Files=", len(all_files)
 
@@ -512,12 +516,12 @@ class siteplugger:
             self.log_file = open(self.plugin_path + self.log_file_name, "r")
             self.done_file = open(self.plugin_path + self.done_file_name, 'a')
 
-            self.logger_save()
+            return self.logger_save()
 
         elif mode == "single_save":
             self.client = requests
             self.log_file = open(self.plugin_path + self.log_file_name, "r")
 
         elif mode == "save_2_s3":
-            self.write_to_s3_bucket()
+            return self.write_to_s3_bucket()
 
