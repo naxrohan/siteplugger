@@ -10,6 +10,7 @@ Runner.py ---help article
  
  
  `docker run -p 8000:8000 amazon/dynamodb-local`
+ `http://localhost:8000/shell/`
  
  `aws lambda update-function-code --function-name siteplugger --zip-file fileb://function.zip`
  
