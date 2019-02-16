@@ -123,7 +123,7 @@ class dynamoplugger:
                         'S': title_key
                     },
                     'URLStatus': {
-                        'S': status
+                        'N': status
                     },
                 },
                 TableName=self.tablename,
@@ -180,12 +180,12 @@ class dynamoplugger:
                     print ex.response['Error']
 
 
-dynamo = dynamoplugger
-url_string = 'https://disciplesofhope.wordpress.com/tag/avoiding-deception'
+# dynamo = dynamoplugger
+# url_string = 'https://disciplesofhope.wordpress.com/tag/avoiding-deception'
 # print dynamo.create_table(dynamoplugger())
 # print dynamo.list_tables(dynamoplugger())
 # print dynamo.get_all_row(dynamoplugger(), 1000, 1)
-print dynamo.get_one_item(dynamoplugger(), url_string, '1')
+# print dynamo.get_one_item(dynamoplugger(), url_string, '1')
 # print dynamo.update_one_row(dynamoplugger(), url_string, "adasdascmasconsosfd")
 
 # dynamo.import_all_links_to_db(dynamoplugger())
