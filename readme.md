@@ -1,5 +1,7 @@
 Runner.py ---help article 
  
+ ./build.sh runner scan_pages
+ 
  Options below: 
  
  `scan_pages  - to scan for new pages in site.`
@@ -18,4 +20,4 @@ Run local Dynamo db instance
  
  `aws lambda update-function-code --function-name siteplugger --zip-file fileb://function.zip`
  
- 
+ `aws lambda invoke --function-name runner --log-type Tail --payload '{"cmd":"scan_pages"}' output.txt`

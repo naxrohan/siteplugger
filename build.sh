@@ -19,9 +19,9 @@ aws lambda update-function-code --function-name $1 --zip-file fileb://archive.zi
 if [ $? -eq 0 ]; then
   echo "!! Upload successful !! -->$2"
 
-  aws lambda invoke --function-name $1 --log-type Tail --payload '{"cmd":"$2"}' output.txt
+#  aws lambda invoke --function-name $1 --log-type Tail --payload '{"cmd":"$2"}' output.txt
 
-  cat output.txt
+#  cat output.txt
 
 else 
   echo "Upload failed"
