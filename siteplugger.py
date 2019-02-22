@@ -7,6 +7,7 @@ import boto3
 import zipfile
 import datetime
 from botocore.vendored import requests
+import dynamoplugger
 
 
 class siteplugger:
@@ -54,6 +55,10 @@ class siteplugger:
     # Set plugger folder
     local_dir = ""
 
+    # Dynamo db handler
+    dynamo = 0
+    db_logging = True
+
     def __init__(self):
 
         if len(sys.argv) > 1:
@@ -64,21 +69,12 @@ class siteplugger:
             # for lambda folder use the tmp folder
             self.plugin_path = "/tmp/" + self.local_dir
 
+        if self.db_logging:
+            self.dynamo = dynamoplugger.dynamoplugger()
+
     def __del__(self):
-        if self.log_file :
+        if self.log_file:
             self.log_file.close()
-
-    def js_op(self, msg=[], error=False):
-        msg_flg = []
-        if error == False :
-            msg_flg.append('False')
-        else:
-            msg_flg.append('True')
-
-        msg_flg.append(msg)
-
-        print json.dumps(msg_flg)
-        exit
 
     def set_save_directory(self, save_dir):
         save_directory = self.plugin_path + save_dir
@@ -261,32 +257,38 @@ class siteplugger:
         self.done_file.write(link + "\n")
 
     def read_log_lines(self, show_error=True, file_name="log_file_name"):
+        if self.db_logging:
+            all_row = {}
+            if file_name == self.log_file_name:
+                all_row = self.dynamo.get_all_row(3000, 0)
+            elif file_name == self.done_file_name:
+                all_row = self.dynamo.get_all_row(3000, 1)
 
-        final_log_path = self.plugin_path + file_name
+            all_read_db = []
+            if len(all_row):
+                for row in all_row:
+                    all_read_db.append(row['URLTitle'])
 
-        readfp = open(final_log_path, "r")
-
-        if os.path.getsize(final_log_path) > 0:
-            log_file_size = os.path.getsize(final_log_path)
+            return all_read_db
         else:
-            log_file_size = 0
-
-        print (file_name + " log size=", log_file_size)
-
-        log_content = readfp.read(log_file_size)
-
-        if log_content != False:
-            readfp.close()
-            allreadline = log_content.split("\n")
-
-            if allreadline is not []:
-                return list(set(allreadline))
+            final_log_path = self.plugin_path + file_name
+            readfp = open(final_log_path, "r")
+            if os.path.getsize(final_log_path) > 0:
+                log_file_size = os.path.getsize(final_log_path)
             else:
-                print "no file log exist?"
-                return []
-
-        else:
-            print "no file log exist!"
+                log_file_size = 0
+            print (file_name + " log size=", log_file_size)
+            log_content = readfp.read(log_file_size)
+            if log_content != False:
+                readfp.close()
+                allreadline = log_content.split("\n")
+                if allreadline is not []:
+                    return list(set(allreadline))
+                else:
+                    print "no file log exist?"
+                    return []
+            else:
+                print "no file log exist!"
 
         return []
 
@@ -309,9 +311,9 @@ class siteplugger:
         if status_code == 200:
             page_content = self.get_body()
 
-            if self.save_files == True:
+            if self.save_files:
 
-                if self.replace_domain_in_file == True:
+                if self.replace_domain_in_file:
                     page_content = self.replace_domain(page_content)
 
                 # print (page_content)
@@ -328,7 +330,11 @@ class siteplugger:
                 i += 1
                 if not page_link in self.all_urls and not page_link in self.logged_urls:
 
-                    self.write_log_line(page_link)
+                    if self.db_logging:
+                        self.dynamo.insert_item(page_link, "[content]", 0)
+                    else:
+                        self.write_log_line(page_link)
+
                     self.all_urls.append(page_link)
 
                     message['new_page'] = page_link
