@@ -1,6 +1,6 @@
 import boto3
 import os
-import time
+import sys
 from boto3.dynamodb.conditions import Key, Attr
 from botocore.exceptions import ClientError
 
@@ -141,11 +141,11 @@ class dynamoplugger:
             self.table = self.dynamodb.Table(self.tablename)
             response = self.table.update_item(
                 Key={
-                    'URLStatus': 1,
+                    'URLStatus': 0,
                     'URLTitle': url
                 },
                 UpdateExpression='SET URLContent = :val1',
-                Eget_all_rowxpressionAttributeValues={
+                ExpressionAttributeValues={
                     ':val1': content_set
                 }
             )
@@ -174,18 +174,22 @@ class dynamoplugger:
             if final_url.strip(" ") != "":
                 # time.sleep(1)
                 try:
-                    print self.insert_item(final_url, "abc", 0)
+                    print self.insert_item(final_url, "[empty]", 0)
                 except ClientError as ex:
                     print ex.response['Error']
 
 
-# dynamo = dynamoplugger
-# url_string = 'https://disciplesofhope.wordpress.com/tag/avoiding-deception'
-# print dynamo.create_table(dynamoplugger())
-# print dynamo.list_tables(dynamoplugger())
-# print dynamo.get_all_row(dynamoplugger(), 1000, 1)
-# print dynamo.get_one_item(dynamoplugger(), url_string, '1')
-# print dynamo.update_one_row(dynamoplugger(), url_string, "adasdascmasconsosfd")
+# Local testing
 
-# dynamo.import_all_links_to_db(dynamoplugger())
+if len(sys.argv) > 1:
+    if sys.argv[1] == "test":
+        dynamo = dynamoplugger
+        # url_string = 'https://disciplesofhope.wordpress.com/tag/avoiding-deception'
+
+        print dynamo.create_table(dynamoplugger())
+        # print dynamo.list_tables(dynamoplugger())
+        # print dynamo.get_all_row(dynamoplugger(), 1000, 1)
+        # print dynamo.get_one_item(dynamoplugger(), url_string, '1')
+        # print dynamo.update_one_row(dynamoplugger(), url_string, "adasdascmasconsosfd")
+        dynamo.import_all_links_to_db(dynamoplugger())
 
